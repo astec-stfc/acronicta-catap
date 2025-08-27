@@ -80,7 +80,7 @@ def main():
     # Define scan parameters
     setpoints = [10.0, 20.0, 30.0, 40.0, 50.0, 60.0]
     tolerance = 0.1
-    temp_stats = cavity_pid.get_statistics()["TEMPERATURE"]
+    temp_stats = cavity_pid.get_statistics("TEMPERATURE")
 
     # Wait until buffer is full before starting
     while not cavity_pid.is_buffer_full("TEMPERATURE"):
