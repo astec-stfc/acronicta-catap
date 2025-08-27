@@ -61,7 +61,9 @@ def print_statistics(statistics, cavity_name: str):
         statistics: The statistics object containing data.
         cavity_name (str): Name of the cavity.
     """
-    print(f"\nFilled buffer for {cavity_name} AMPLITUDE ({len(statistics.buffer)}/{statistics.buffer_size})")
+    print(
+        f"\nFilled buffer for {cavity_name} AMPLITUDE ({len(statistics.buffer)}/{statistics.buffer_size})"
+    )
     print("Amplitude Mean:", statistics.mean)
     print("Amplitude Std Dev:", statistics.stdev)
     print("Amplitude Min:", statistics.min)

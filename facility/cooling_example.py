@@ -32,7 +32,10 @@ def set_and_wait(
         total_steps (int): Total number of steps (for logging).
     """
     cavity_pid.setpoint = setpoint
-    while not temp_stats.is_buffer_full and abs(cavity_pid.setpoint - temp_stats.mean) > tolerance:
+    while (
+        not temp_stats.is_buffer_full
+        and abs(cavity_pid.setpoint - temp_stats.mean) > tolerance
+    ):
         print(
             f"Step {step + 1}/{total_steps} | Cavity temp: {round(temp_stats.mean, 3)} {temp_stats.units}",
             end="\r",
