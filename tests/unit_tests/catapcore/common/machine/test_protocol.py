@@ -53,7 +53,7 @@ class TestPVA(unittest.TestCase):
         for i, (state, expected_type) in enumerate(expected_types):
             self.protocol._connected = False
             with self.subTest(i=i):
-                self.protocol._connection_callback(state)
+                self.protocol._dispatch_callback(state)
                 self.assertTrue(self.protocol.connected)
                 self.assertEqual(self.protocol.type, expected_type)
 
@@ -68,7 +68,7 @@ class TestPVA(unittest.TestCase):
             self.protocol._connected = False
             with self.subTest(i=i):
                 with self.assertWarns(FailedEPICSOperationWarning) as w:
-                    self.protocol._connection_callback(state)
+                    self.protocol._dispatch_callback(state)
                     self.assertTrue(str(state) in str(w.warnings[0].message))
 
                 self.assertFalse(self.protocol.connected)

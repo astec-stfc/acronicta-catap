@@ -21,7 +21,7 @@ cfg._machine_areas_tuple = namedtuple("MACHINE_AREAS", _area_names)
 cfg.MACHINE_AREAS = cfg._machine_areas_tuple(*[MachineArea(name=name) for name in _area_names])
 
 {% if hardware_types %}
-_hardware_types = {
+cfg._hardware_types = {
     {% for hardware_type, hardware_subtype in hardware_types.items() %}
     "{{hardware_type}}": [{% for subtype in hardware_subtype %}"{{subtype}}",{% endfor %}],
     {% endfor %}
@@ -34,7 +34,7 @@ def _convert_types_to_named_tuple(types: Dict[str, List[str]]) -> Tuple:
     _types = namedtuple("TYPES", types.keys())
     return _types(*_subtypes)
 
-cfg.TYPES = _convert_types_to_named_tuple(types=_hardware_types)
+cfg.TYPES = _convert_types_to_named_tuple(types=cfg._hardware_types)
 {% endif %}
 
 

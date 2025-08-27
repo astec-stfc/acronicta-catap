@@ -1,0 +1,59 @@
+controls_information:
+  pv_record_map:
+    AMPLITUDE_READBACK:
+      description: Amplitude readback for the cavity
+      protocol: PVA
+      pv: SYS:CAV3:AMPLITUDE_READBACK
+      type: statistical
+      auto_buffer: True
+      buffer_size: 100
+      units: MW
+    AMPLITUDE_SETPOINT:
+      description: Amplitude setpoint for the cavity
+      protocol: PVA
+      pv: SYS:CAV3:AMPLITUDE_SETPOINT
+      read_only: false
+      type: scalar
+      units: MW
+    PHASE_READBACK:
+      description: Phase readback for the cavity
+      protocol: PVA
+      pv: SYS:CAV3:PHASE_READBACK
+      type: statistical
+      auto_buffer: True
+      buffer_size: 100
+      units: degrees
+    PHASE_SETPOINT:
+      description: Phase setpoint for the cavity
+      protocol: PVA
+      pv: SYS:CAV3:PHASE_SETPOINT
+      read_only: false
+      type: scalar
+      units: degrees
+      virtual_pv: SIMSYS:CAV3:PHASE_SETPOINT
+    PROBE_TRACE:
+      description: Probe trace data for the cavity
+      protocol: PVA
+      pv: SYS:CAV3:PROBE_TRACE
+      type: waveform
+      units: W
+      virtual_pv: SIMSYS:CAV3:PROBE_TRACE
+    STATUS:
+      description: Status of the cavity
+      protocol: PVA
+      pv: SYS:CAV3:STATUS
+      states:
+        FAULT: 1
+        'OFF': 2
+        OK: 0
+      type: state
+      read_only: False
+properties:
+  hardware_type: Cavity
+  installation_date: '2023-04-05'
+  machine_area: ACC03
+  manufacturer: ACME Accelerator Systems
+  name: CAV-03
+  name_alias: ACC03-CAV
+  position: 7.0
+  subtype: LINAC

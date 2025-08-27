@@ -1,13 +1,13 @@
-# Byte-compiled / optimized / DLL files
+## Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
 *$py.class
 
 # Project-specific files
-facility/output/catapcore
-facility/output/hardware
-facility/output/models
-facility/output/__init__.py
+facility/catapcore
+facility/hardware
+facility/models
+facility/__init__.py
 .vscode
 # C extensions
 *.so

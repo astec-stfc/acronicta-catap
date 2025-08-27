@@ -1,0 +1,38 @@
+controls_information:
+  pv_record_map:
+    TEMPERATURE:
+      type: statistical
+      auto_buffer: True
+      buffer_size: 100
+      units: Celsius
+      description: Cavity temperature reading
+      pv: H20-PID-01:CAVITY_TEMP
+    PRESSURE:
+      type: statistical
+      auto_buffer: True
+      buffer_size: 100
+      units: mBar
+      description: Cavity pressure reading
+      pv: H20-PID-01:CAVITY_PRESSURE
+    SETPOINT:
+      type: scalar
+      protocol: PVA
+      units: Celsius
+      description: Setpoint for the PID controller
+      pv: H20-PID-01:PID_SETPOINT
+      read_only: False
+    READBACK:
+      type: scalar
+      protocol: PVA
+      units: Celsius
+      description: Readback temperature for the PID controller
+      pv: H20-PID-01:PID_READBACK
+properties:
+  name: H20-PID-01
+  hardware_type: Cooling
+  subtype: CAVITY_WATER_PID
+  position: -1.0
+  machine_area: ACC01
+  name_alias: CAV-01-PID
+  last_tuned_date: "2025-06-20"
+  next_tuned_due: "2026-06-20"
