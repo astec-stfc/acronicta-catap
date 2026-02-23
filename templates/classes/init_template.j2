@@ -12,13 +12,13 @@ else:
 from catapcore.common.machine.area import MachineArea
 
 
-_area_names = [
-    {% for area in areas %}
-    "{{area}}",
-    {% endfor %}
-]
-cfg._machine_areas_tuple = namedtuple("MACHINE_AREAS", _area_names)
-cfg.MACHINE_AREAS = cfg._machine_areas_tuple(*[MachineArea(name=name) for name in _area_names])
+#_area_names = [
+#    {% for area in areas %}
+#    "{{area}}",
+#    {% endfor %}
+#]
+#cfg._machine_areas_tuple = namedtuple("MACHINE_AREAS", _area_names)
+#cfg.MACHINE_AREAS = cfg._machine_areas_tuple(*[MachineArea(name=name) for name in _area_names])
 
 {% if hardware_types %}
 cfg._hardware_types = {
