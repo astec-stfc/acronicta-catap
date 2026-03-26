@@ -165,12 +165,13 @@ Generated hardware supports both modes:
 **Virtual Mode**
     - PV names are prefixed (e.g., "TEST:BPM-01:X") globally or use `virtual_pv` specific to YAML PV defintion
     - Useful for testing and development
-    - No actual EPICS control system required
+    - Read/Write Access allowed for all PVs
     - Set via ``is_virtual=True`` in factory creation
 
 **Physical Mode**
     - Direct connection to EPICS PVs
     - Requires running EPICS IOCs
+    - Ability to force `read_only` mode at PV level
     - PV names used as specified in YAML
     - Set via ``is_virtual=False`` in factory creation
 
