@@ -124,8 +124,10 @@ Test without a real EPICS system:
     # Get a BPM
     bpm_01 = factory.get_hardware_by_name("BPM-01")
     
-    # In virtual mode, PV names become "TEST:BPM-01:X", etc.
-    # This allows testing without affecting the real system
+    # In virtual mode, PV names become "VM-BPM-01:X", etc.
+    # This allows testing without affecting the real system.
+    # If you want to change the global prefix, you can look in `catapcore/config.py`
+    # and change `VIRTUAL_PREFIX`
 
 
 Snapshot Management
