@@ -1,6 +1,6 @@
-=======================
+==================================
 acronicta-catap Documentation
-=======================
+==================================
 
 Welcome to the acronicta-catap documentation. acronicta-catap is a Python library that combines Pydantic and Jinja2 templating to produce a facility-specific middle layer for EPICS-based control systems.
 
