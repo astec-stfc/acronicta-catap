@@ -1,11 +1,26 @@
-### Acronicta CATAP
+# Acronicta CATAP
 
-A python library that combines Pydantic and Jinja2 templating to produce a facility-specific middle layer for EPICS-based control systems
+A python library that combines Pydantic and Jinja2 templating to produce a facility-specific middle layer for EPICS-based control systems.
 
+acronicta-catap leverages [catapcore](https://github.com/astec-stfc/catapcore) as its foundation, providing an object-oriented interface for EPICS PV interactions through auto-generated hardware classes from YAML configurations.
 
-### How to generate your middle layer
+## Documentation
 
-- Provide a set of folders with YAML files that describe your hardware components.
+For comprehensive documentation, including getting started guides, architecture details, and API references, please visit the [API Documentation](https://astec-stfc.github.io/acronicta-catap/).
+
+## How to generate your middle layer
+
+### Prerequisites
+
+Ensure you have installed the required dependencies:
+
+```bash
+pip install -r requirements.txt
+```
+
+### Configuration
+
+- Provide a set of folders with YAML files that describe your hardware components:
 ```bash
 - yaml/
   - BPM/
@@ -60,9 +75,9 @@ From the top level directory, you should be able to do:
 python ./scripts/generate_hardware.py --yaml_location "<yaml-directory>" --output_location "<output-directory>" --overwrite_hardware
 ```
 
-For the first time you run the generation, you will need to supply the `--overwrite_hardware` argument to generate the `hardware/` folder with componennt defintions in.
+For the first time you run the generation, you will need to supply the `--overwrite_hardware` argument to generate the `hardware/` folder with component definitions in.
 
-After the first time, you may not want to overwrite the hardware classes due to them have facility specific logic in there. If this is the case, do not supply the `--overwrite_hardware` option.
+After the first time, you may not want to overwrite the hardware classes due to them having facility-specific logic in there. If this is the case, do not supply the `--overwrite_hardware` option.
 
 ### Testing your generated middle layer
 
@@ -78,5 +93,8 @@ magnets = MagnetFactory(is_virtual=False)
 
 # get a parameter for all components in the factory.
 magnets.current()
-
 ```
+
+## Related Projects
+
+- **[catapcore](https://github.com/astec-stfc/catapcore)**: The underlying framework that provides the core PV interaction functionality
