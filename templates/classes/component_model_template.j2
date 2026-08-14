@@ -6,7 +6,7 @@ from catapcore.common.machine.area import MachineArea
 import os
 from typing import Any, Union, List, Dict
 from enum import EnumMeta
-from pydantic import field_validator, SerializeAsAny, ConfigDict
+from pydantic import field_validator, SerializeAsAny, ConfigDict, Field, AliasChoices
 
 
 {# --- PVMap class --- #}
@@ -91,7 +91,9 @@ class {{ class_name }}ControlsInformationModel(ControlsInformation):
     Inherits from:
         :class:`~catapcore.common.machine.hardware.ControlsInformation`
     """
-    pv_record_map: SerializeAsAny[{{ class_name }}PVMapModel]
+    pv_record_map: SerializeAsAny[{{ class_name }}PVMapModel] = Field(
+        validation_alias=AliasChoices("pv_record_map", "variables")
+    )
 
     {% for parameter, value in controls_information.items() %}
     {% if parameter in optional_controls_parameters%}
@@ -211,7 +213,9 @@ class {{ class_name }}Model(Hardware):
         :class:`~catapcore.common.machine.hardware.Hardware`
     """
 
-    controls_information: SerializeAsAny[{{ class_name }}ControlsInformationModel]
+    controls_information: SerializeAsAny[{{ class_name }}ControlsInformationModel] = Field(
+        validation_alias=AliasChoices("controls_information", "controls")
+    )
     """Controls information pertaining to this {{ hardware_type|lower }}
     (see :class:`~catapcore.common.machine.pv_utils.ControlsInformation`)"""
     properties: SerializeAsAny[{{ class_name }}PropertiesModel]

@@ -5,6 +5,7 @@ from typing import Dict, List, Set, Any
 from jinja2 import Environment, FileSystemLoader
 import argparse
 import shutil
+from warnings import warn
 
 EXCLUDE_FOLDERS = ["FEBELaser", "PILaser"]
 LATTICE_LOCATION = os.path.abspath("../isis/output/yaml")
@@ -23,17 +24,12 @@ def ensure_directories():
 
 
 def get_example_files(lattice_location: str, exclude_folders: List[str]) -> List[str]:
-    files = []
-    for folder in os.listdir(lattice_location):
-        if folder not in exclude_folders:
-            folder_path = os.path.join(lattice_location, folder)
-            if os.path.isdir(folder_path):
-                files += [
-                    os.path.join(folder_path, f)
-                    for f in os.listdir(folder_path)
-                    if f.endswith(".yaml")
-                ]
-    return files
+    filelist = []
+    for (root, direc, files) in os.walk(lattice_location):
+        if direc not in exclude_folders and root.split(os.path.sep)[-1] not in exclude_folders:
+            if len(direc) == 0:
+                filelist += [f"{root}/{f}" for f in files if f.endswith(".yaml")]
+    return filelist
 
 
 def extract_differing_keys(file_pv_maps: Dict[str, Set[str]]) -> Set[str]:
@@ -81,15 +77,26 @@ def collect_class_data(example_files: List[str]):
     for file in example_files:
         data = load_yaml_file(file)
         properties = data.get("properties", {})
-        hardware_type = properties.get("hardware_type")
+        hardware_type = properties.get("hardware_type") or data.get("hardware_type")
         if hardware_type is None:
-            raise ValueError(f"hardware_type is not defined in the YAML file: {file}")
+            warn(f"hardware_type is not defined in the YAML file: {file}, skipping this file.")
+            continue
         class_name = hardware_type
 
-        controls_info = data.get("controls_information", {})
-        pv_map = controls_info.pop("pv_record_map", None)
+        controls_info = (
+                data.get("controls_information")
+                or data.get("controls")
+                or {}
+        )
+        for key in ("pv_record_map", "variables"):
+            if key in controls_info:
+                pv_map = controls_info.pop(key)
+                break
+        else:
+            pv_map = None
         if pv_map is None:
-            raise ValueError(f"pv_record_map missing in controls_information: {file}")
+            warn(f"pv_record_map/variables missing in controls_information.controls: {file}, skipping PV info for this file.")
+            continue
 
         # Initialize dicts for each class_name
         for d in [
