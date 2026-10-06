@@ -25,8 +25,11 @@ def ensure_directories():
 
 def get_example_files(lattice_location: str, exclude_folders: List[str]) -> List[str]:
     filelist = []
-    for (root, direc, files) in os.walk(lattice_location):
-        if direc not in exclude_folders and root.split(os.path.sep)[-1] not in exclude_folders:
+    for root, direc, files in os.walk(lattice_location):
+        if (
+            direc not in exclude_folders
+            and root.split(os.path.sep)[-1] not in exclude_folders
+        ):
             if len(direc) == 0:
                 # *_schema.yaml is a shared controls template, not an element:
                 # it is pulled in by the elements that name it, not generated
@@ -118,7 +121,7 @@ def build_element_namespace(lattice_location: str) -> Dict[str, Dict]:
         Namespace dictionary containing loaded lattice files
     """
     namespace: Dict[str, Dict] = {}
-    for (root, _, files) in os.walk(lattice_location):
+    for root, _, files in os.walk(lattice_location):
         for f in files:
             if not f.endswith(".yaml") or f.endswith("_schema.yaml"):
                 continue
@@ -368,15 +371,13 @@ def collect_class_data(example_files: List[str], namespace: Dict[str, Dict] = No
         properties = data.get("properties", {})
         hardware_type = properties.get("hardware_type") or data.get("hardware_type")
         if hardware_type is None:
-            warn(f"hardware_type is not defined in the YAML file: {file}, skipping this file.")
+            warn(
+                f"hardware_type is not defined in the YAML file: {file}, skipping this file."
+            )
             continue
         class_name = hardware_type
 
-        controls_info = (
-                data.get("controls_information")
-                or data.get("controls")
-                or {}
-        )
+        controls_info = data.get("controls_information") or data.get("controls") or {}
         controls_info = resolve_controls_schema(
             controls_info, data.get("name", ""), os.path.dirname(file)
         )
@@ -387,7 +388,9 @@ def collect_class_data(example_files: List[str], namespace: Dict[str, Dict] = No
                 controls_info = {k: v for k, v in controls_info.items() if k != key}
                 break
         if pv_map is None:
-            warn(f"pv_record_map/variables missing in controls_information.controls: {file}, skipping PV info for this file.")
+            warn(
+                f"pv_record_map/variables missing in controls_information.controls: {file}, skipping PV info for this file."
+            )
             continue
 
         # Initialize dicts for each class_name
