@@ -25,10 +25,20 @@ def ensure_directories():
 
 def get_example_files(lattice_location: str, exclude_folders: List[str]) -> List[str]:
     filelist = []
-    for (root, direc, files) in os.walk(lattice_location):
-        if direc not in exclude_folders and root.split(os.path.sep)[-1] not in exclude_folders:
+    for root, direc, files in os.walk(lattice_location):
+        if (
+            direc not in exclude_folders
+            and root.split(os.path.sep)[-1] not in exclude_folders
+        ):
             if len(direc) == 0:
-                filelist += [f"{root}/{f}" for f in files if f.endswith(".yaml")]
+                # *_schema.yaml is a shared controls template, not an element:
+                # it is pulled in by the elements that name it, not generated
+                # from (see resolve_controls_schema).
+                filelist += [
+                    f"{root}/{f}"
+                    for f in files
+                    if f.endswith(".yaml") and not f.endswith("_schema.yaml")
+                ]
     return filelist
 
 
@@ -65,7 +75,286 @@ def load_yaml_file(file_path: str) -> Dict:
         return yaml.safe_load(f)
 
 
-def collect_class_data(example_files: List[str]):
+INHERIT_KEYS = ("inherits_from", "inherit")
+NON_INHERITED_KEYS: Dict[str, Any] = {
+    "name": None,
+    "alias": None,
+    "virtual_name": None,
+    "subelement": None,
+    "upstream": None,
+    "downstream": None,
+    "physical": frozenset(
+        {
+            "middle",
+            "s",
+            "s_point",
+            "datum",
+            "reference_placement",
+            "rotation",
+            "global_rotation",
+            "survey",
+            "error",
+            "physical_angle",
+        }
+    ),
+}
+
+CONTROLS_RESOLUTION_KEYS = ("schema", "schema_", "identifier_pattern")
+
+_SCHEMA_VARIABLE_CACHE: Dict[str, Dict] = {}
+
+
+def build_element_namespace(lattice_location: str) -> Dict[str, Dict]:
+    """
+    Index every named element in the tree by name, for inheritance lookups.
+    This walks the whole tree. Excluded folders are indexed
+    too: a child we do generate from may inherit from one we don't.
+
+    Parameters
+    ----------
+    lattice_location: str
+        Directory containing lattice files
+
+    Returns
+    -------
+    dict[str, dict]
+        Namespace dictionary containing loaded lattice files
+    """
+    namespace: Dict[str, Dict] = {}
+    for root, _, files in os.walk(lattice_location):
+        for f in files:
+            if not f.endswith(".yaml") or f.endswith("_schema.yaml"):
+                continue
+            data = load_yaml_file(os.path.join(root, f))
+            if isinstance(data, dict) and data.get("name"):
+                namespace[data["name"]] = data
+    return namespace
+
+
+def _merge_inherited(parent: Dict, child: Dict) -> Dict:
+    """
+    Recursive merge of ``child`` onto ``parent``; the child wins.
+
+    Parameters
+    ----------
+    parent: dict
+        Dictionary 1
+    child: dict
+        Dictionary 2
+
+    Returns
+    -------
+    dict
+        Merged dict
+    """
+    merged = dict(parent)
+    for key, value in child.items():
+        if isinstance(merged.get(key), dict) and isinstance(value, dict):
+            merged[key] = _merge_inherited(merged[key], value)
+        else:
+            merged[key] = value
+    return merged
+
+
+def _strip_non_inherited(parent: Dict) -> Dict:
+    """Drop the keys of ``parent`` that a child must never inherit;
+    see ``NON_INHERITED_KEYS."""
+    stripped = {}
+    for key, value in parent.items():
+        if key in NON_INHERITED_KEYS:
+            excluded = NON_INHERITED_KEYS[key]
+            if excluded is None:
+                continue
+            if isinstance(value, dict):
+                value = {k: v for k, v in value.items() if k not in excluded}
+                if not value:
+                    continue
+        stripped[key] = value
+    return stripped
+
+
+def resolve_inheritance(
+    elem: Dict,
+    namespace: Dict[str, Dict],
+    memo: Dict[str, Dict] = None,
+    chain: tuple = (),
+) -> Dict:
+    """
+    Merge ``elem`` on top of the element named by its ``inherits_from``.
+
+    Parameters
+    ----------
+    elem: dict
+        Dictionary containing element information
+    namespace: dict[str, dict]
+        Dictionary containing names elements, no schemas
+    memo: dict[str, dict], optional
+        Additional information
+    chain: tuple, optional
+        Inheritance chain
+    """
+    parent_name = next(
+        (elem[key] for key in INHERIT_KEYS if elem.get(key) is not None), None
+    )
+    if not parent_name:
+        return elem
+
+    name = elem.get("name", "<unknown>")
+    if memo is not None and name in memo:
+        return memo[name]
+
+    if parent_name in chain + (name,):
+        warn(
+            f"inheritance cycle: {' -> '.join(chain + (name, parent_name))}, "
+            f"leaving {name} unresolved."
+        )
+        return elem
+
+    parent_raw = namespace.get(parent_name)
+    if parent_raw is None:
+        warn(
+            f"{name} inherits from '{parent_name}', which is not defined "
+            "anywhere in the lattice, leaving it unresolved."
+        )
+        return elem
+
+    parent = resolve_inheritance(parent_raw, namespace, memo, chain + (name,))
+    merged = _merge_inherited(_strip_non_inherited(parent), elem)
+    if memo is not None:
+        memo[name] = merged
+    return merged
+
+
+def _resolve_schema_path(schema_ref: str, base_dir: str) -> str:
+    """
+    Figure out where the ``controls.schema`` path points to, check if
+    absolute or relative path.
+
+    Parameters
+    ----------
+    schema_ref: str
+        Path given for the schema file
+    base_dir: str
+        Base directory for the lattice
+
+    Returns
+    -------
+    str
+        Absolute path to the schema file
+    """
+    if os.path.isabs(schema_ref) or os.path.exists(schema_ref):
+        return os.path.abspath(schema_ref)
+    return os.path.abspath(os.path.join(base_dir, schema_ref))
+
+
+def load_schema_variables(schema_ref: str, base_dir: str) -> Dict:
+    """
+    The raw, still ``{name}``-templated ``variables`` of a controls schema,
+    cached by path.
+
+    Parameters
+    ----------
+    schema_ref: str
+        Path to the schema file
+    base_dir: str
+        Base directory for the lattice
+
+    Returns
+    -------
+    dict
+        Variables declared in the schema
+    """
+    path = _resolve_schema_path(schema_ref, base_dir)
+    if path not in _SCHEMA_VARIABLE_CACHE:
+        if not os.path.exists(path):
+            warn(
+                f"controls schema '{schema_ref}' not found (looked in "
+                f"{base_dir}), so its variables are missing."
+            )
+            _SCHEMA_VARIABLE_CACHE[path] = {}
+        else:
+            data = load_yaml_file(path) or {}
+            _SCHEMA_VARIABLE_CACHE[path] = (
+                data.get("variables", {}) if isinstance(data, dict) else {}
+            )
+    return _SCHEMA_VARIABLE_CACHE[path]
+
+
+def _substitute_schema_placeholders(value: Any, name: str):
+    """
+    Replace the ``{name}`` placeholder with the owning element's name,
+    recursively through nested dicts and lists (it appears in `identifier`).
+
+    Parameters
+    ----------
+    value: Any
+        Value to return
+    name: str
+        Element name
+
+    Returns
+    -------
+    Any
+        ``value`` with ``"{name}"`` replaced with element name
+    """
+    if isinstance(value, str):
+        return value.replace("{name}", name)
+    if isinstance(value, dict):
+        return {k: _substitute_schema_placeholders(v, name) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_substitute_schema_placeholders(v, name) for v in value]
+    return value
+
+
+def resolve_controls_schema(controls: Dict, element_name: str, base_dir: str) -> Dict:
+    """Expand a ``controls.schema`` reference into a full ``variables`` dict.
+
+    The schema holds one templated ``variables`` mapping shared by every
+    element of a type; ``{name}`` in it is replaced by the element's
+    ``identifier_pattern``, or by its name when it has no pattern. Any
+    ``variables`` stated inline are then layered on top one field at a time, so
+    an element can override a single entry without restating the map.
+
+    Parameters
+    ----------
+    controls: dict
+        Dictionary containing controls variables
+    element_name: str
+        Name of the element to be included over the schema placeholder
+    base_dir: str
+        Directory containing element files
+
+    Returns
+    -------
+    dict
+        Resolved ``controls.schema``
+    """
+    schema_ref = controls.get("schema") or controls.get("schema_")
+    if not schema_ref:
+        return controls
+
+    schema_variables = load_schema_variables(schema_ref, base_dir)
+    substitution_name = controls.get("identifier_pattern") or element_name
+    merged = {
+        key: _substitute_schema_placeholders(var_def, substitution_name)
+        for key, var_def in schema_variables.items()
+    }
+    for key, override in (controls.get("variables") or {}).items():
+        if isinstance(merged.get(key), dict) and isinstance(override, dict):
+            merged[key] = {**merged[key], **override}
+        else:
+            merged[key] = override
+
+    resolved = {
+        k: v
+        for k, v in controls.items()
+        if k != "variables" and k not in CONTROLS_RESOLUTION_KEYS
+    }
+    resolved["variables"] = merged
+    return resolved
+
+
+def collect_class_data(example_files: List[str], namespace: Dict[str, Dict] = None):
     file_pv_keys = {}
     file_pv_info = {}
     file_controls_keys = {}
@@ -74,29 +363,34 @@ def collect_class_data(example_files: List[str]):
     file_property_info = {}
     machine_areas = []
     hardware_and_subtypes = {}
+    inheritance_memo = {}
 
     for file in example_files:
         data = load_yaml_file(file)
+        data = resolve_inheritance(data, namespace or {}, inheritance_memo)
         properties = data.get("properties", {})
         hardware_type = properties.get("hardware_type") or data.get("hardware_type")
         if hardware_type is None:
-            warn(f"hardware_type is not defined in the YAML file: {file}, skipping this file.")
+            warn(
+                f"hardware_type is not defined in the YAML file: {file}, skipping this file."
+            )
             continue
         class_name = hardware_type
 
-        controls_info = (
-                data.get("controls_information")
-                or data.get("controls")
-                or {}
+        controls_info = data.get("controls_information") or data.get("controls") or {}
+        controls_info = resolve_controls_schema(
+            controls_info, data.get("name", ""), os.path.dirname(file)
         )
+        pv_map = None
         for key in ("pv_record_map", "variables"):
             if key in controls_info:
-                pv_map = controls_info.pop(key)
+                pv_map = controls_info[key]
+                controls_info = {k: v for k, v in controls_info.items() if k != key}
                 break
-        else:
-            pv_map = None
         if pv_map is None:
-            warn(f"pv_record_map/variables missing in controls_information.controls: {file}, skipping PV info for this file.")
+            warn(
+                f"pv_record_map/variables missing in controls_information.controls: {file}, skipping PV info for this file."
+            )
             continue
 
         # Initialize dicts for each class_name
@@ -210,6 +504,7 @@ def write_output_files(
 def main(overwrite_hardware: bool = False):
     ensure_directories()
     example_files = get_example_files(LATTICE_LOCATION, EXCLUDE_FOLDERS)
+    namespace = build_element_namespace(LATTICE_LOCATION)
     (
         file_pv_keys,
         file_pv_info,
@@ -219,7 +514,7 @@ def main(overwrite_hardware: bool = False):
         file_property_info,
         machine_areas,
         hardware_and_subtypes,
-    ) = collect_class_data(example_files)
+    ) = collect_class_data(example_files, namespace)
 
     env = Environment(loader=FileSystemLoader(TEMPLATE_DIR))
     created_classes = set()

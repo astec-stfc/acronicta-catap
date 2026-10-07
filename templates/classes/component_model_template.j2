@@ -13,9 +13,9 @@ from pydantic import field_validator, SerializeAsAny, ConfigDict, Field, AliasCh
 class {{ class_name }}PVMapModel(PVMap):
     {% for pv_name, pv_type in pvs.items() %}
     {% if pv_name in optional_pvs%}
-    {{ pv_name }}: {{ pv_type }} = None
+    {{ pv_name.upper() }}: {{ pv_type }} = Field(default=None, validation_alias=AliasChoices("{{ pv_name.upper() }}", "{{ pv_name.lower() }}"))
     {% else %}
-    {{ pv_name }}: {{ pv_type }}
+    {{ pv_name.upper() }}: {{ pv_type }} = Field(validation_alias=AliasChoices("{{ pv_name.upper() }}", "{{ pv_name.lower() }}"))
     {% endif %}
     """{{ pv_descriptions.get(pv_name, '') }}"""
     {% endfor %}
@@ -42,23 +42,23 @@ class {{ class_name }}PVMapModel(PVMap):
     {% for pv_name, pv_type in pvs.items() %}
     @property
     def {{ pv_name.lower() }}(self):
-        """Default Getter implementation for {{ pv_name }}"""
+        """Default Getter implementation for {{ pv_name.upper() }}"""
         {% if pv_name in optional_pvs %}
-        if self.{{ pv_name }}:
-            return self.{{ pv_name }}.get()
+        if self.{{ pv_name.upper() }}:
+            return self.{{ pv_name.upper() }}.get()
         {%else%}
-        return self.{{ pv_name }}.get()
+        return self.{{ pv_name.upper() }}.get()
         {% endif %}
 
     {% if read_only.get(pv_name, True) == False %}
     @{{ pv_name.lower() }}.setter
     def {{ pv_name.lower() }}(self, value):
-        """Default Setter implementation for {{ pv_name }}"""
+        """Default Setter implementation for {{ pv_name.upper() }}"""
         {% if pv_name in optional_pvs %}
-        if self.{{ pv_name }}:
-            return self.{{ pv_name }}.put(value)
+        if self.{{ pv_name.upper() }}:
+            return self.{{ pv_name.upper() }}.put(value)
         {%else%}
-        return self.{{ pv_name }}.put(value)
+        return self.{{ pv_name.upper() }}.put(value)
         {% endif %}
     {% endif %}
     {% endfor %}
@@ -67,9 +67,9 @@ class {{ class_name }}PVMapModel(PVMap):
     {% if pv_type == "StatePV"%}
     @property
     def {{pv_name.lower()}}_states(self) -> EnumMeta:
-        """Default Getter implementation for :attr:`{{ class_name }}PVMapModel.{{ pv_name }}.states`."""
-        if self.{{pv_name}}:
-            return self.{{ pv_name }}.states
+        """Default Getter implementation for :attr:`{{ class_name }}PVMapModel.{{ pv_name.upper() }}.states`."""
+        if self.{{ pv_name.upper() }}:
+            return self.{{ pv_name.upper() }}.states
     {% endif %}
     {% endfor %}
 
@@ -77,9 +77,9 @@ class {{ class_name }}PVMapModel(PVMap):
     {% if pv_type == "ScalarPV" or pv_type == "WaveformPV" or pv_type == "StatisticalPV"%}
     @property
     def {{pv_name.lower()}}_units(self) -> str:
-        """Default Getter implementation for :attr:`{{ class_name }}PVMapModel.{{ pv_name }}.units`."""
-        if self.{{pv_name}}:
-            return self.{{ pv_name }}.units
+        """Default Getter implementation for :attr:`{{ class_name }}PVMapModel.{{ pv_name.upper() }}.units`."""
+        if self.{{ pv_name.upper() }}:
+            return self.{{ pv_name.upper() }}.units
     {% endif %}
     {% endfor %}
 
