@@ -13,9 +13,9 @@ from pydantic import field_validator, SerializeAsAny, ConfigDict, Field, AliasCh
 class {{ class_name }}PVMapModel(PVMap):
     {% for pv_name, pv_type in pvs.items() %}
     {% if pv_name in optional_pvs%}
-    {{ pv_name.upper() }}: {{ pv_type }} = Field(default=None, validation_alias=AliasChoices("{{ pv_name.upper() }}", "{{ pv_name.lower() }}"))
+    {{ pv_name.upper() }}: {{ pv_type }} = Field(default=None, validation_alias=AliasChoices("{{ pv_name.upper() }}", "{{ pv_name.lower() }}", "{{ pv_name }}",))
     {% else %}
-    {{ pv_name.upper() }}: {{ pv_type }} = Field(validation_alias=AliasChoices("{{ pv_name.upper() }}", "{{ pv_name.lower() }}"))
+    {{ pv_name.upper() }}: {{ pv_type }} = Field(validation_alias=AliasChoices("{{ pv_name.upper() }}", "{{ pv_name.lower() }}", "{{ pv_name }}",))
     {% endif %}
     """{{ pv_descriptions.get(pv_name, '') }}"""
     {% endfor %}
